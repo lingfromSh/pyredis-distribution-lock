@@ -1,46 +1,58 @@
 import time
-from threading import current_thread
-from functools import wraps
 
 
-SUCCESS = 1
-FAILURE = -1
-
-
-def release_lock(rclient, lock_name: str) -> bool:
+class RedisDistributionLock:
     """
-    Releases a lock.
-
-    :param      rclient:    The rclient
-    :param      lock_name:  The lock name
-    """
-    return rclient.delete(lock_name) == SUCCESS
-
-
-def acquire_lock(rclient, lock_name: str, timeout: int, acquire_time: int):
-    """
-    Acquire a lock.
-
-    :param      func:  The function
+    This class describes a redis distribution lock.
     """
 
-    t_id = current_thread().ident
+    ACQUIRED = 1
+    SUCCESS = 1
+    FAILURE = -1
+    MAX_WAIT = 60
 
-    def wrapper(func):
-        @wraps(func)
-        def _wrapper(*args, **kwargs):
-            end = time.time() + timeout
-            while time.time() < end:
-                if rclient.setnx(lock_name, t_id) == SUCCESS:
-                    rclient.expire(lock_name, acquire_time)
-                    ret = func(*args, **kwargs)
-                    release_lock(rclient, lock_name)
-                    return ret, True
-                elif rclient.ttl(lock_name) == FAILURE:
-                    rclient.expire(lock_name, timeout)
+    def __init__(self, name, rclient):
+        assert name, "missing name"
+        assert rclient, "missing redis client"
 
-            return (args, kwargs), False
+        self.name = name
+        self.rclient = rclient
 
-        return _wrapper
+    def acquire(self, wait=None, acquire_time=30) -> bool:
+        """
+        Acquires the lock
 
-    return wrapper
+        :param      wait:          The wait
+        :type       wait:          { type_description }
+        :param      acquire_time:  The acquire time
+        :type       acquire_time:  int
+
+        :returns:   { description_of_the_return_value }
+        :rtype:     bool
+        """
+
+        if wait is None:
+            wait = RedisDistributionLock.MAX_WAIT
+
+        end = time.time() + wait
+        while time.time() < end:
+            if (
+                self.rclient.setnx(self.name, RedisDistributionLock.ACQUIRED)
+                == RedisDistributionLock.SUCCESS
+            ):
+                self.rclient.expire(self.name, acquire_time)
+                return True
+
+            if self.rclient.ttl(self.name) == RedisDistributionLock.FAILURE:
+                self.rclient.expire(self.name, min(acquire_time, wait))
+
+        return False
+
+    def release(self) -> bool:
+        """
+        Releases the lock
+
+        :returns:   { description_of_the_return_value }
+        :rtype:     bool
+        """
+        return self.rclient.delete(self.name) == RedisDistributionLock.SUCCESS
