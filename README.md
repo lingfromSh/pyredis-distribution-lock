@@ -6,10 +6,6 @@ It's just a simple implementation of distribution lock.
 
 We could use redis distribution lock to manipulate some shared resources safely in distributed context.
 
-## Problems
-
-1. Cannot handle problem when some workers crushed or timeout.
-
 ## Tests
 
 You could quickly test
