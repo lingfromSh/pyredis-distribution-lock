@@ -20,7 +20,7 @@ def incr_balance():
 
 
 def decr_balance():
-    if lock.acquire():
+    if lock.acquire(acquire_time=1):
         balance = int(r.get(BALANCE).decode())
         r.set(BALANCE, balance - 1)
         lock.release()
