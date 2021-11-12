@@ -23,10 +23,16 @@ import redis
 import lock
 
 r = redis.Redis(host='localhost', port=6379, db=0)
-lock = lock.RedisDistributionLock()
 
+# if-else
 def deduct_inventory(...):
-	if lock.acquire(...):
-		...
-		lock.release()
+    lock = lock.RedisDistributionLock()
+    if lock.acquire(...):
+        ...
+	lock.release()
+
+# with
+def deduct_inventory(...):
+    with lock.RedisDistributionLock():
+        ...
 ```
