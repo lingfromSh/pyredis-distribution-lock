@@ -18,6 +18,18 @@ class RedisDistributionLock:
         self.name = name
         self.rclient = rclient
 
+    def __enter__(self, wait=None, acquire_time=30):
+        """
+        Context manager
+
+        :param      wait:          The wait
+        :param      acquire_time:  The acquire time
+        """
+        self.acquire(wait, acquire_time)
+
+    def __exit__(self):
+        self.release()
+
     def acquire(self, wait=None, acquire_time=30) -> bool:
         """
         Acquires the lock
